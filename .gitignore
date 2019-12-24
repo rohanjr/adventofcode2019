@@ -2,3 +2,7 @@ Main
 *.o
 *.hi
 *.txt
+*.aux
+*.prof
+*.hp
+*.ps

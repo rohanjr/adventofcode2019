@@ -3,11 +3,11 @@
 module Main where
 
 import Data.Int
+import Data.Ix
 import Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Map.Strict as Map
-import Control.Monad
 import Control.Monad.Trans.State.Lazy
 
 import IntCode
@@ -18,24 +18,21 @@ main = do
   let cells = T.split (== ',') progText
       prog = map (read . T.unpack) cells
   painted <- runWhole prog
-  renderMap painted
+  putStr $ showMap painted
 
-renderMap :: Map.Map Pos Int64 -> IO ()
-renderMap painted = do
+showMap :: Map.Map Pos Int64 -> String
+showMap painted = do
   let (xs, ys) = unzip $ Map.keys painted
-      minX = minimum xs
-      maxX = maximum xs
-      minY = minimum ys
-      maxY = maximum ys
-  forM_ (reverse [minY..maxY]) $ \y -> do
-    forM_ [minX..maxX] $ \x ->
-      putChar $ renderColour $ getColour (x, y) painted
-    putChar '\n'
+  unlines $ flip map (reverse $ getRange ys) $ \y ->
+    flip map (getRange xs) $ \x ->
+      showColour $ getColour (x, y) painted
  where
-  renderColour :: Int64 -> Char
-  renderColour 0 = '.'
-  renderColour 1 = '#'
-  renderColour _ = ' '
+  getRange :: [Int] -> [Int]
+  getRange es = range (minimum es, maximum es)
+  showColour :: Int64 -> Char
+  showColour 0 = '.'
+  showColour 1 = '#'
+  showColour _ = ' '
 
 memoryLimit :: Int
 memoryLimit = 1000000

@@ -69,4 +69,9 @@ computeAmounts reactions amounts (chem : chems) =
       sum $ flip map rhses $ \(cRhs, nLhs, nRhs) ->
         case Map.lookup cRhs amounts of
           Nothing -> error "Should have already computed amount of right hand chemical"
-          Just a -> nLhs * ceiling (fromIntegral a / fromIntegral nRhs)
+          Just a -> nLhs * divCeiling a nRhs
+
+divCeiling :: Integral a => a -> a -> a
+divCeiling n d =
+  let (q, r) = n `divMod` d
+  in if r == 0 then q else q + 1

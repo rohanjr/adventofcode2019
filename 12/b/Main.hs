@@ -6,7 +6,6 @@ import Data.Int
 import Data.Char
 import Data.List
 import Data.List.Split
-import qualified Data.Map as Map
 
 main :: IO ()
 main = do
@@ -45,17 +44,42 @@ type State = ([Int], [Int])
 -- So (k + m) is the total number of steps to reach the repeated state, but we
 -- will need k and m separately for combining the results from different components.
 findRepeat :: State -> (Int64, Int64)
-findRepeat = go 0 Map.empty
+findRepeat s0 =
+  let sC = findStateInCycle s0
+      m = findCycleLength sC
+      k = findCycleStart m s0
+  in (k, m)
+
+-- Given an initial state, use the `step` function to find a state within its
+-- cycle (assuming a cycle exists).
+findStateInCycle :: State -> State
+findStateInCycle s0 = go s0 s0
  where
-  -- Keep track of every state we've seen so far and the number of steps it took
-  -- to reach it in a map.
-  -- Beware that this solution uses memory proportional to (k + m), which might
-  -- not be satisfactory in general.
-  go :: Int64 -> Map.Map State Int64 -> State -> (Int64, Int64)
-  go i seen s =
-    case Map.lookup s seen of
-      Nothing -> go (i + 1) (Map.insert s i seen) (step s)
-      Just k -> (k, i - k)
+  -- Use a tortoise-and-hare approach to find a state in the cycle,
+  -- i.e. advance at single speed and double speed until we reach equal states.
+  go s1 s2 =
+    let (s1', s2') = (step s1, step (step s2))
+    in if s1' == s2' then s1' else go s1' s2'
+
+-- Given a state we assume is in a cycle, find the length of that cycle,
+-- simply by iterating the step function until we reach the same state.
+findCycleLength :: State -> Int64
+findCycleLength s0 = go 0 s0
+ where
+  go i s =
+    let (i', s') = (i + 1, step s)
+    in if s' == s0 then i' else go i' s'
+
+-- Given an initial state and the length of a cycle, determine the start of the
+-- cycle, specifically the number of steps to reach the start of the cycle.
+findCycleStart :: Int64 -> State -> Int64
+findCycleStart m s0 =
+  -- Advance two states from 0 steps and m steps until we find them equal.
+  let sM = iter m s0
+  in go 0 s0 sM
+ where
+  iter n s = if n <= 0 then s else iter (n - 1) (step s)
+  go i s1 s2 = if s1 == s2 then i else go (i + 1) (step s1) (step s2)
 
 -- Given the positions and velocities of the moons in a single dimension,
 -- calculate the new values after one time step.

@@ -10,7 +10,7 @@ import qualified Data.Text.IO as T
 import qualified Data.Map.Strict as Map
 import Control.Monad.Trans.State.Lazy
 
-import IntCode
+import Intcode
 
 main :: IO ()
 main = do
@@ -57,13 +57,13 @@ runRobot robotState@RobotState{..} = do
   let colour = getColour pos painted
   runState1 <- run (repeat colour)
   case runState1 of
-    Finished -> return robotState
-    Output newColour -> do
+    Finished _ -> return robotState
+    Output newColour _ -> do
       let robotState2 = robotState { painted = Map.insert pos newColour painted }
       runState2 <- run (repeat newColour)
       case runState2 of
-        Finished -> return robotState2
-        Output rot -> do
+        Finished _ -> return robotState2
+        Output rot _ -> do
           let newDir = turn rot dir
               newPos = addPos pos (dirToPos newDir)
               robotState3 = robotState2 { pos = newPos, dir = newDir }

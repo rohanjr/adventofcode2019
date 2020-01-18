@@ -5,7 +5,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Control.Monad.Trans.State.Lazy
 
-import IntCode
+import Intcode
 
 main :: IO ()
 main = do
@@ -35,7 +35,7 @@ parseTiles = go . map fromIntegral
 
 runWhole :: [Int64] -> IO [Int64]
 runWhole prog =
-  initialise memoryLimit prog >>= evalStateT (runToEnd [])
+  initialise memoryLimit prog >>= evalStateT (runToEnd []) >>= return . fst
  where
   memoryLimit :: Int
   memoryLimit = 1000000

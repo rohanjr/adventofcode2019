@@ -15,7 +15,7 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans.State.Lazy
 import System.Console.Haskeline
 
-import IntCode
+import Intcode
 
 main :: IO ()
 main = do

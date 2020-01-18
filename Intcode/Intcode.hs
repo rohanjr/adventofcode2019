@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module IntCode
+module Intcode
   ( initialise
   , run
   , runToEnd
@@ -39,9 +39,9 @@ data EndState
 data RunState
   = Finished EndState
   | Output
-      { out :: Int64
-      , ins :: [Int64]
-      }
+    { out :: Int64
+    , ins :: [Int64]
+    }
     -- ^ Reached an "Output" instruction returning `out` with remaining inputs `ins`.
     -- The latter component allows the client to continue execution with the remaining inputs.
 

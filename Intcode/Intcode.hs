@@ -1,14 +1,17 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Intcode
-  ( initialise
-  , run
-  , runToEnd
+  ( ProgMem(..)
+  , ProgState
   , ProgSt
-  , ProgState -- abstract
+  , ProgStateM
+  , ProgStM
   , EndState(..)
   , RunState(..)
+  , run
+  , runToEnd
   ) where
 
 import Data.Int
@@ -17,14 +20,67 @@ import qualified Data.Vector.Unboxed.Mutable as V
 import Control.Monad.IO.Class
 import Control.Monad.Primitive
 import Control.Monad.Trans.State.Lazy
+import Data.Functor.Identity
+import qualified Data.Vector.Unboxed as VI
 
+class Monad m => ProgMem s m where
+  -- Set up an initial program state.
+  -- The result can be used by `runStateT` to run a `ProgStS` computation.
+  initMem :: Int -> [Int64] -> m (ProgStateS s)
 
--- State monad for client use.
-type ProgSt = StateT ProgState IO
+  -- Read or write at a given memory address.
+  readMem :: Int64 -> ProgStS s m Int64
+  writeMem :: Int64 -> Int64 -> ProgStS s m ()
+
+data ImVec = ImVec (VI.Vector Int64)
+instance ProgMem ImVec Identity where
+  initMem memoryLimit program
+    | length program > memoryLimit
+    = error "Program too large for given memory limit"
+    | otherwise
+    = let mem = VI.fromListN memoryLimit $ program ++ repeat 0
+      in return ProgStateS{ memory = ImVec mem, instrP = 0, relBase = 0 }
+
+  readMem i = do
+    ImVec mem <- gets memory
+    return $ mem VI.! fromIntegral i
+
+  writeMem i e = do
+    progState <- get
+    let ImVec mem = memory progState
+    let newMem = mem VI.// [(fromIntegral i, e)]
+    put progState{ memory = ImVec newMem }
+
+type ProgState = ProgStateS ImVec
+type ProgSt = ProgStS ImVec Identity
+
+data MVec = MVec (V.MVector (PrimState IO) Int64)
+instance ProgMem MVec IO where
+  initMem memoryLimit program
+    | length program > memoryLimit
+    = error "Program too large for given memory limit"
+    | otherwise
+    = do
+        a <- V.replicate memoryLimit 0
+        imapM_ (V.write a) program
+        return $ ProgStateS (MVec a) 0 0
+
+  readMem i = do
+    MVec mem <- gets memory
+    liftIO $ V.read mem (fromIntegral i)
+
+  writeMem i e = do
+    MVec mem <- gets memory
+    liftIO $ V.write mem (fromIntegral i) e
+
+type ProgStateM = ProgStateS MVec
+type ProgStM = ProgStS MVec IO
+
+type ProgStS s m = StateT (ProgStateS s) m
 
 -- Internal state to the IntCode runtime.
-data ProgState = ProgState
-  { memory :: V.MVector (PrimState IO) Int64
+data ProgStateS s = ProgStateS
+  { memory :: s
   , instrP :: Int64
   , relBase :: Int64
   }
@@ -45,20 +101,8 @@ data RunState
     -- ^ Reached an "Output" instruction returning `out` with remaining inputs `ins`.
     -- The latter component allows the client to continue execution with the remaining inputs.
 
--- Set up an initial program state.
--- This can be passed to `runStateT` to run a `ProgSt` computation.
-initialise :: Int -> [Int64] -> IO ProgState
-initialise memoryLimit program
-  | length program > memoryLimit
-  = error "Program too large for given memory limit"
-  | otherwise
-  = do
-      a <- V.replicate memoryLimit 0
-      imapM_ (V.write a) program
-      return $ ProgState a 0 0
-
 -- Continue to run an Intcode program until it halts, collecting all output values.
-runToEnd :: [Int64] -> ProgSt ([Int64], EndState)
+runToEnd :: ProgMem s m => [Int64] -> ProgStS s m ([Int64], EndState)
 runToEnd inputs =
   run inputs >>= \case
     Finished endState -> return ([], endState)
@@ -67,7 +111,7 @@ runToEnd inputs =
       return (out : outs, endState)
 
 -- Run an IntCode program until either it halts or outputs a value.
-run :: [Int64] -> ProgSt RunState
+run :: ProgMem s m => [Int64] -> ProgStS s m RunState
 run inputs = do
   (opCode, paramModes) <- readInstr
   case opCode of
@@ -83,7 +127,7 @@ run inputs = do
     99 -> return $ Finished Halted
     _ -> error "Invalid program"
  where
-  binaryOp :: [Int] -> (Int64 -> Int64 -> Int64) -> ProgSt RunState
+  binaryOp :: ProgMem s m => [Int] -> (Int64 -> Int64 -> Int64) -> ProgStS s m RunState
   binaryOp (mode1 : mode2 : mode3 : _) op = do
     i <- gets instrP
     val1 <- evalParam mode1 (i + 1)
@@ -94,7 +138,7 @@ run inputs = do
     run inputs
   binaryOp _ _ = error "Not enough parameter modes passed to binary operation"
 
-  storeInput :: [Int] -> ProgSt RunState
+  storeInput :: ProgMem s m => [Int] -> ProgStS s m RunState
   storeInput (mode : _) =
     case inputs of
       [] -> return $ Finished AwaitingInput
@@ -106,7 +150,7 @@ run inputs = do
         run rest
   storeInput _ = error "No parameter modes passed to store instruction"
 
-  output :: [Int] -> ProgSt RunState
+  output :: ProgMem s m => [Int] -> ProgStS s m RunState
   output (mode : _) = do
     i <- gets instrP
     val <- evalParam mode (i + 1)
@@ -114,7 +158,7 @@ run inputs = do
     return $ Output val inputs
   output _ = error "No parameter modes passed to output instruction"
 
-  jump :: [Int] -> (Int64 -> Bool) -> ProgSt RunState
+  jump :: ProgMem s m => [Int] -> (Int64 -> Bool) -> ProgStS s m RunState
   jump (mode1 : mode2 : _) cond = do
     i <- gets instrP
     val1 <- evalParam mode1 (i + 1)
@@ -123,32 +167,17 @@ run inputs = do
     run inputs
   jump _ _ = error "Not enough parameter modes passed to jump instruction"
 
-  relBaseOffset :: [Int] -> ProgSt RunState
+  relBaseOffset :: ProgMem s m => [Int] -> ProgStS s m RunState
   relBaseOffset (mode : _) = do
-    ProgState mem i rb <- get
+    ProgStateS mem i rb <- get
     offset <- evalParam mode (i + 1)
-    put ProgState{ memory = mem, instrP = i + 2, relBase = rb + offset }
+    put ProgStateS{ memory = mem, instrP = i + 2, relBase = rb + offset }
     run inputs
   relBaseOffset _ = error "Not enough parameter modes passed to relative base offset instruction"
 
--- Helper functions for program execution --
-
--- Wrappers around Vector read and write.
--- Note that vector index must be Int, so we need `fromIntegral` to
--- convert from values in memory.
-readMem :: Int64 -> ProgSt Int64
-readMem i = do
-  mem <- gets memory
-  liftIO $ V.read mem (fromIntegral i)
-
-writeMem :: Int64 -> Int64 -> ProgSt ()
-writeMem i e = do
-  mem <- gets memory
-  liftIO $ V.write mem (fromIntegral i) e
-
 -- Parse the instruction at the current instruction pointer,
 -- returning the opcode and parameter modes.
-readInstr :: ProgSt (Int, [Int])
+readInstr :: ProgMem s m => ProgStS s m (Int, [Int])
 readInstr = do
   i <- gets instrP
   instr <- readMem i
@@ -162,7 +191,7 @@ splitInstr instr =
   in (opCode, paramModes)
 
 -- Interpret a parameter using its parameter mode.
-evalParam :: Int -> Int64 -> ProgSt Int64
+evalParam :: ProgMem s m => Int -> Int64 -> ProgStS s m Int64
 evalParam mode pos = do
   param <- readMem pos
   case mode of
@@ -171,7 +200,7 @@ evalParam mode pos = do
     2 -> do rb <- gets relBase; readMem (rb + param)
     _ -> error "Unknown parameter mode"
 
-evalWriteParam :: Int -> Int64 -> ProgSt Int64
+evalWriteParam :: ProgMem s m => Int -> Int64 -> ProgStS s m Int64
 evalWriteParam mode pos = do
   param <- readMem pos
   case mode of
@@ -180,7 +209,7 @@ evalWriteParam mode pos = do
     2 -> (param +) <$> gets relBase
     _ -> error "Unknown parameter mode"
 
-setInstrP :: Int64 -> ProgSt ()
+setInstrP :: Monad m => Int64 -> ProgStS s m ()
 setInstrP k = do
   progState <- get
   put progState{ instrP = k }

@@ -25,7 +25,7 @@ memoryLimit = 1000000
 runWhole :: [Int64] -> IO Int
 runWhole prog = do
   let initialRobotState = RobotState (0, 0) U Map.empty
-  initialProgState <- initialise memoryLimit prog
+  initialProgState <- initMem memoryLimit prog
   RobotState{..} <- evalStateT (runRobot initialRobotState) initialProgState
   return $ Map.size painted
 
@@ -58,7 +58,7 @@ turn 1 D = L
 turn 1 R = D
 turn _ _ = error "Undefined rotation number"
 
-runRobot :: RobotState -> ProgSt RobotState
+runRobot :: RobotState -> ProgStM RobotState
 runRobot robotState@RobotState{..} = do
   let colour = fromMaybe 0 (Map.lookup pos painted)
   runState1 <- run (repeat colour)

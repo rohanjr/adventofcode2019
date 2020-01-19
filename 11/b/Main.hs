@@ -40,7 +40,7 @@ memoryLimit = 1000000
 runWhole :: [Int64] -> IO (Map.Map Pos Int64)
 runWhole prog = do
   let initialRobotState = RobotState (0, 0) U Map.empty
-  initialProgState <- initialise memoryLimit prog
+  initialProgState <- initMem memoryLimit prog
   RobotState{..} <- evalStateT (runRobot initialRobotState) initialProgState
   return  painted
 
@@ -52,7 +52,7 @@ getColour pos painted =
   initialColour (0, 0) = 1
   initialColour _ = 0
 
-runRobot :: RobotState -> ProgSt RobotState
+runRobot :: RobotState -> ProgStM RobotState
 runRobot robotState@RobotState{..} = do
   let colour = getColour pos painted
   runState1 <- run (repeat colour)

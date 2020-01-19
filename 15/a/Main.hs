@@ -14,7 +14,7 @@ import qualified Data.Set as Set
 import qualified Data.Sequence as Seq
 import Data.Functor.Identity
 
-import IntCode
+import Intcode
 
 main :: IO ()
 main = do
@@ -33,7 +33,7 @@ type Dir = Int
 -- to reach the goal position.
 runDroid :: [Int64] -> Int
 runDroid prog =
-  let s0 = initialise memoryLimit prog
+  let s0 = runIdentity $ initMem memoryLimit prog
       numMoves = runToGoal Set.empty $ Seq.singleton (V2 0 0, 0, s0)
   in case numMoves of
       Nothing -> error "No way to reach oxygen system!"
@@ -72,10 +72,9 @@ movePos dir pos = pos + dirToPos dir
 
 runStep :: Int -> ProgState -> (Int64, ProgState)
 runStep dir progState =
-  runIdentity $ flip runStateT progState $ do
-    out <- run [fromIntegral dir]
-    return $ getOutput out
+  runIdentity $ flip runStateT progState $
+    getOutput <$> run [fromIntegral dir]
 
 getOutput :: RunState -> Int64
-getOutput Finished = error "Repair droid halted but should run forever"
-getOutput (Output val) = val
+getOutput (Finished _) = error "Repair droid halted but should run forever"
+getOutput (Output val _) = val

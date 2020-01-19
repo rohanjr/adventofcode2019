@@ -49,13 +49,13 @@ data PlayerState = PlayerState
   , score :: Int
   }
 
-runBot :: ProgSt Int
+runBot :: ProgStM Int
 runBot = go dummyPlayerState []
  where
   dummyPlayerState :: PlayerState
   dummyPlayerState = PlayerState (0, 0) (0, 0) 0
 
-  go :: PlayerState -> [Int64] -> ProgSt Int
+  go :: PlayerState -> [Int64] -> ProgStM Int
   go PlayerState{..} inputs = do
     (outs, endState) <- runToEnd inputs
     let tiles = parseTiles outs
@@ -71,7 +71,7 @@ runBot = go dummyPlayerState []
 
 runWhole :: [Int64] -> IO Int
 runWhole prog = do
-  ps0 <- initialise memoryLimit prog
+  ps0 <- initMem memoryLimit prog
   evalStateT runBot ps0
 
 -- The rest is for playing the game interactively
@@ -108,10 +108,10 @@ parseMove = \case
   'l' -> 1  -- move right
   _ -> 0    -- any other keystroke is a neutral move
 
-runInteractive :: ProgSt ()
+runInteractive :: ProgStM ()
 runInteractive = go Map.empty []
  where
-  go :: Map.Map (Int, Int) Int -> [Int64] -> ProgSt ()
+  go :: Map.Map (Int, Int) Int -> [Int64] -> ProgStM ()
   go tiles inputs = do
     (outs, endState) <- runToEnd inputs
     let newTiles = foldl' (\ts (p, t) -> Map.insert p t ts) tiles (parseTiles outs)
@@ -124,5 +124,5 @@ runInteractive = go Map.empty []
 
 runWholeInteractive :: [Int64] -> IO ()
 runWholeInteractive prog = do
-  ps0 <- initialise memoryLimit prog
+  ps0 <- initMem memoryLimit prog
   evalStateT runInteractive ps0

@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Main where
 
 import Data.Int
@@ -34,8 +36,10 @@ parseTiles = go . map fromIntegral
   go _ = []
 
 runWhole :: [Int64] -> IO [Int64]
-runWhole prog =
-  initialise memoryLimit prog >>= evalStateT (runToEnd []) >>= return . fst
+runWhole prog = do
+  startState :: ProgStateM <- initMem memoryLimit prog
+  (outs, _endState) <- evalStateT (runToEnd []) startState
+  return outs
  where
   memoryLimit :: Int
   memoryLimit = 1000000

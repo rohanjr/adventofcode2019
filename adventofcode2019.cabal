@@ -1,0 +1,119 @@
+cabal-version:       3.0
+name:                adventofcode2019
+version:             0.1.0.0
+synopsis:            Advent of Code 2019 Solutions
+description:         Haskell solutions to Advent of Code 2019 (https://adventofcode.com).
+license:             ISC
+license-file:        LICENSE
+author:              Rohan Jacob-Rao
+maintainer:          rohanjr@gmail.com
+copyright:           2019 Rohan Jacob-Rao
+
+library Intcode
+  hs-source-dirs:      Intcode
+  exposed-modules:     Intcode
+  build-depends:       base, transformers, ilist, vector, primitive
+  ghc-options:         -Wall
+  default-language:    Haskell2010
+
+executable Day01a
+  main-is:             1/a/Main.hs
+  build-depends:       base
+  ghc-options:         -Wall
+  default-language:    Haskell2010
+
+executable Day09b
+  main-is:             9/b/Main.hs
+  build-depends:       base, text, primitive, vector
+  ghc-options:         -Wall
+  default-language:    Haskell2010
+
+executable Day10a
+  main-is:             10/a/Main.hs
+  build-depends:       base, ilist, containers
+  ghc-options:         -Wall
+  default-language:    Haskell2010
+
+executable Day11a
+  main-is:             Main.hs
+  hs-source-dirs:      11/a
+  build-depends:       Intcode, base, text, containers, transformers
+  ghc-options:         -Wall
+  default-language:    Haskell2010
+
+executable Day11b
+  main-is:             Main.hs
+  hs-source-dirs:      11/b
+  build-depends:       Intcode, base, text, containers, transformers
+  ghc-options:         -Wall
+  default-language:    Haskell2010
+
+executable Day12a
+  main-is:             Main.hs
+  hs-source-dirs:      12/a
+  build-depends:       base, split, linear
+  ghc-options:         -Wall
+  default-language:    Haskell2010
+
+executable Day12b
+  main-is:             Main.hs
+  hs-source-dirs:      12/b
+  build-depends:       base, split
+  ghc-options:         -Wall
+  default-language:    Haskell2010
+
+executable Day13a
+  main-is:             Main.hs
+  hs-source-dirs:      13/a
+  build-depends:       Intcode, base, text, transformers, ilist, vector, primitive
+  ghc-options:         -Wall
+  default-language:    Haskell2010
+
+executable Day13b
+  main-is:             Main.hs
+  hs-source-dirs:      13/b
+  build-depends:       Intcode, base, text, containers, transformers, ilist, vector, primitive, haskeline
+  ghc-options:         -Wall
+  default-language:    Haskell2010
+
+executable Day14a
+  main-is:             Main.hs
+  hs-source-dirs:      14/a
+  build-depends:       base, containers, split, extra
+  ghc-options:         -Wall
+  default-language:    Haskell2010
+
+executable Day14b
+  main-is:             Main.hs
+  hs-source-dirs:      14/b
+  build-depends:       base, containers, split, extra, binary-search
+  ghc-options:         -Wall
+  default-language:    Haskell2010
+
+executable Day15a
+  main-is:             Main.hs
+  hs-source-dirs:      15/a
+  build-depends:       Intcode, base, text, containers, linear, extra, transformers
+  ghc-options:         -Wall
+  default-language:    Haskell2010
+
+executable Day15b
+  main-is:             Main.hs
+  hs-source-dirs:      15/b
+  build-depends:       Intcode, base, text, containers, linear, extra, transformers
+  ghc-options:         -Wall
+  default-language:    Haskell2010
+
+executable Day17a
+  main-is:             Main.hs
+  hs-source-dirs:      17/a
+  build-depends:       Intcode, base, split, containers, linear, extra, transformers, ilist
+  ghc-options:         -Wall
+  default-language:    Haskell2010
+
+executable Day18a
+  main-is:             Main.hs
+  hs-source-dirs:      18/a
+  build-depends:       Intcode, base, array, containers, pqueue, ilist, linear, deepseq, unordered-containers
+  ghc-options:         -Wall -fprof-auto -fprof-cafs
+  default-language:    Haskell2010
